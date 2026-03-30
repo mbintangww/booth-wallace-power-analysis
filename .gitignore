@@ -1,0 +1,10 @@
+# LibreLane outputs — large files (100MB–1GB per run)
+runs/
+final/
+
+# Simulation outputs
+sim_out/
+*.vcd
+
+# Waveform files
+*.gtkw
