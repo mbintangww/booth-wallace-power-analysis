@@ -1,6 +1,10 @@
-// Testbench for Top — 70% zero input power analysis
-// 1000 random test cases: 70% have at least one operand = 0
+// Testbench for Top — parameterized zero-input power analysis
+// 1000 random test cases: ZERO_PCT% have at least one operand = 0
 // Self-checking: verifies output against expected A*B
+// Override at compile time: iverilog -DZERO_PCT=50 ...
+`ifndef ZERO_PCT
+  `define ZERO_PCT 70
+`endif
 `timescale 1ns / 1ps
 
 module tb_Top_power;
@@ -12,8 +16,7 @@ module tb_Top_power;
     wire signed [31:0] Output;
 
     integer pass_count, fail_count, i;
-    integer roll;
-    reg signed [15:0] A_d1, B_d1; 
+    reg signed [15:0] A_d1, B_d1;
     reg signed [31:0] expected;
 
     Top uut (
@@ -44,9 +47,8 @@ module tb_Top_power;
         A_d1 = 0; B_d1 = 0;
 
         for (i = 0; i < 1000; i = i + 1) begin
-            // 70% chance: at least one operand = 0
-            roll = $urandom % 10;
-            if (roll < 7) begin
+            // ZERO_PCT% chance: at least one operand = 0
+            if (($urandom % 100) < `ZERO_PCT) begin
                 case ($urandom % 3)
                     0: begin A = 0;        B = $urandom; end
                     1: begin A = $urandom; B = 0;        end

@@ -4,7 +4,6 @@
 DESIGN_NAME: Top
 VERILOG_FILES:
   - dir::RTL/Top.v
-  - dir::RTL/MAC.v
 CLOCK_PORT: clk
 CLOCK_PERIOD: 16
 

@@ -1,21 +1,16 @@
 #!/bin/bash
 # =============================================================
-# Power Analysis — All Three Designs
-# Usage: ./run_power.sh
+# Sparsity Sweep — 30-Run Power Analysis
+# Usage: ./run_sweep.sh
 # Run from project root: booth-wallace-power-analysis/
 #
+# Runs gate-level simulation + OpenROAD power analysis for
+# 10 zero-input sparsity levels (0%..90%) across all 3 designs.
+#
 # Prerequisites:
-#   1. LibreLane run completed for each design
-#   2. Gate-level simulation completed (run ./run_gate_sim.sh first)
-#      → sim_out/gate_level.vcd must exist in each design folder
-#
-# Output: sim_out/power_report.log for each design
-#
-# sky130_fd_sc_hd and openroad are located automatically from:
-#   SKY:      export SKY=/path/to/sky130_fd_sc_hd
-#             or export PDK_ROOT=/path/to/pdks
-#             or ~/.ciel / ~/pdk (auto-detected)
-#   OpenROAD: openroad in PATH, or /nix/store/*/bin/openroad (auto-detected)
+#   LibreLane must be run for each design first.
+#   Output: sim_out/power_report_N.log and sim_out/gate_level_N.vcd
+#   Then run: python parse_sweep.py  (via nix-shell or venv)
 # =============================================================
 
 set -e
@@ -54,51 +49,67 @@ _detect_openroad() {
 
 SKY=$(_detect_sky) || {
     echo "ERROR: sky130_fd_sc_hd not found automatically."
-    echo "Please set one of the following before running:"
-    echo "  export SKY=/path/to/sky130A/libs.ref/sky130_fd_sc_hd"
-    echo "  export PDK_ROOT=/path/to/pdks"
+    echo "Please set: export SKY=/path/to/sky130A/libs.ref/sky130_fd_sc_hd"
     exit 1
 }
 
 OPENROAD=$(_detect_openroad) || {
     echo "ERROR: openroad not found in PATH or /nix/store."
-    echo "Please install OpenROAD and add it to PATH, or:"
-    echo "  export PATH=/path/to/openroad/bin:\$PATH"
+    echo "Please add OpenROAD to PATH."
     exit 1
 }
 
-echo "Using sky130:  $SKY"
+echo "Using sky130:   $SKY"
 echo "Using openroad: $OPENROAD"
-# -----------------------------------
 
 DESIGNS=("behavioral" "structural-baseline" "structural-icg")
+SPARSITY=(0 10 20 30 40 50 60 70 80 90)
+
+TOTAL=$(( ${#DESIGNS[@]} * ${#SPARSITY[@]} ))
+COUNT=0
 
 for DESIGN in "${DESIGNS[@]}"; do
     echo ""
     echo "======================================================"
-    echo " Power Analysis: $DESIGN"
+    echo " Design: $DESIGN"
     echo "======================================================"
 
-    # Find latest LibreLane run (full path from repo root)
+    mkdir -p $DESIGN/sim_out
+
     RUN_DIR_FULL=$(ls -d $DESIGN/runs/RUN_* 2>/dev/null | sort | tail -1)
     if [ -z "$RUN_DIR_FULL" ]; then
-        echo "ERROR: No LibreLane run found in $DESIGN/runs/"
+        echo "ERROR: No LibreLane run found in $DESIGN/runs/ — skipping."
         continue
     fi
-    # Relative path from inside the design folder (strip "DESIGN/" prefix)
     RUN_DIR="${RUN_DIR_FULL#$DESIGN/}"
 
-    VCD="$DESIGN/sim_out/gate_level.vcd"
-    if [ ! -f "$VCD" ]; then
-        echo "ERROR: VCD not found at $VCD"
-        echo "Please run ./run_gate_sim.sh first."
-        continue
-    fi
+    NETLIST="$RUN_DIR_FULL/final/nl/Top.nl.v"
+    ODB="$RUN_DIR_FULL/final/odb/Top.odb"
+    SPEF="$RUN_DIR_FULL/final/spef/nom/Top.nom.spef"
 
-    echo "Using run: $RUN_DIR_FULL"
+    for ZPCT in "${SPARSITY[@]}"; do
+        COUNT=$(( COUNT + 1 ))
+        echo ""
+        echo "--- [$COUNT/$TOTAL] $DESIGN @ ${ZPCT}% zero ---"
 
-    cd $DESIGN
-    $OPENROAD -no_init -exit - <<EOF 2>&1 | tee sim_out/power_report.log
+        # Gate-level compile with ZERO_PCT
+        iverilog -o $DESIGN/sim_out/gate_sim_${ZPCT} \
+            -DFUNCTIONAL \
+            -DZERO_PCT=${ZPCT} \
+            $SKY/verilog/primitives.v \
+            $SKY/verilog/sky130_fd_sc_hd.v \
+            $NETLIST \
+            $DESIGN/tb/tb_Top_power.v 2>&1 | grep -v "warning:" || true
+
+        # Run simulation
+        cd $DESIGN
+        vvp sim_out/gate_sim_${ZPCT} 2>&1 | grep -v "dumpfile" | grep -v "^$" || true
+        mv sim_out/gate_level.vcd sim_out/gate_level_${ZPCT}.vcd
+        cd ..
+
+        # OpenROAD power analysis
+        cd $DESIGN
+        $OPENROAD -no_init -exit - <<EOF 2>&1 | tee sim_out/power_report_${ZPCT}.log
 set ::env(CLOCK_PORT)               clk
 set ::env(CLOCK_PERIOD)             16
 set ::env(IO_DELAY_CONSTRAINT)      20
@@ -110,16 +121,18 @@ read_liberty -corner nom_tt_025C_1v80 $SKY/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
 read_db $RUN_DIR/final/odb/Top.odb
 read_sdc constraints/signoff.sdc
 read_spef -corner nom_tt_025C_1v80 $RUN_DIR/final/spef/nom/Top.nom.spef
-read_power_activities -scope tb_Top_power/uut -vcd sim_out/gate_level.vcd
+read_power_activities -scope tb_Top_power/uut -vcd sim_out/gate_level_${ZPCT}.vcd
 report_power -corner nom_tt_025C_1v80
 exit
 EOF
-    cd ..
+        cd ..
 
-    echo "Power report saved to $DESIGN/sim_out/power_report.log"
+        echo "    -> power_report_${ZPCT}.log saved"
+    done
 done
 
 echo ""
 echo "======================================================"
-echo " All power analyses complete."
+echo " Sweep complete: $TOTAL runs done."
+echo " Next step: python parse_sweep.py"
 echo "======================================================"

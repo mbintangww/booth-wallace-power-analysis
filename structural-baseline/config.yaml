@@ -9,7 +9,6 @@ VERILOG_FILES:
   - dir::RTL/Partial_Products.v
   - dir::RTL/Partial_Products_Adder.v
   - dir::RTL/Top.v
-  - dir::RTL/MAC.v
 CLOCK_PORT: clk
 CLOCK_PERIOD: 16
 
