@@ -21,9 +21,9 @@ DESIGNS = ["behavioral", "structural-baseline", "structural-icg"]
 SPARSITY = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
 
 COLORS = {
-    "behavioral":        "#2196F3",  # blue
-    "structural-baseline": "#4CAF50",  # green
-    "structural-icg":    "#F44336",  # red
+    "behavioral":        "#2196F3",  
+    "structural-baseline": "#4CAF50",  
+    "structural-icg":    "#F44336",  
 }
 
 LABELS = {
@@ -33,7 +33,6 @@ LABELS = {
 }
 
 # Regex: match the Total row in OpenROAD power report
-# Example: "Total  4.95e-04  3.66e-04  8.24e-09  8.61e-04 100.0%"
 TOTAL_RE = re.compile(
     r'^Total\s+([\d.e+\-]+)\s+([\d.e+\-]+)\s+([\d.e+\-]+)\s+([\d.e+\-]+)',
     re.MULTILINE
@@ -104,32 +103,6 @@ if crossover_pct is not None:
     print(f"\nCrossover point (ICG = Baseline): ~{crossover_pct:.1f}% zero input")
 else:
     print("\nCrossover point: not found in measured range")
-
-# --- Linear regression per design ---
-import numpy as np
-
-print("\n=== Linear Regression per Design ===")
-print(f"{'Design':<22} {'Slope (mW/10%)':<18} {'Intercept (mW)':<18} {'R²':<8}")
-print("-" * 70)
-
-for design in DESIGNS:
-    subset = df[df["design"] == design].sort_values("zero_pct")
-    if len(subset) < 2:
-        continue
-    x = subset["zero_pct"].values.astype(float)
-    y = subset["total_mw"].values.astype(float)
-
-    # Linear fit: y = slope*x + intercept
-    coeffs = np.polyfit(x, y, 1)
-    slope, intercept = coeffs
-
-    # R²
-    y_pred = np.polyval(coeffs, x)
-    ss_res = np.sum((y - y_pred) ** 2)
-    ss_tot = np.sum((y - np.mean(y)) ** 2)
-    r2 = 1 - ss_res / ss_tot
-
-    print(f"{LABELS[design]:<22} {slope*10:<18.4f} {intercept:<18.4f} {r2:<8.6f}")
 
 # --- Plot ---
 fig, ax = plt.subplots(figsize=(9, 5.5))
