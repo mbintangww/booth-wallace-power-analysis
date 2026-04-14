@@ -270,6 +270,19 @@ Power measured with OpenROAD using gate level VCD activity. See [Section 3.3](#3
 
 ![Power vs Sparsity](docs/power_vs_sparsity.png)
 
+| Zero Input (%) | Behavioral (mW) | Structural Baseline (mW) | Structural ICG (mW) | ICG vs Baseline |
+| :------------: | :-------------: | :----------------------: | :-----------------: | :-------------: |
+|       0        |      1.570      |          1.520           |        1.660        |     -9.2%       |
+|       10       |      1.540      |          1.500           |        1.570        |     -4.7%       |
+|       20       |      1.490      |          1.460           |        1.410        |     +3.4%       |
+|       30       |      1.430      |          1.420           |        1.300        |     +8.5%       |
+|       40       |      1.350      |          1.380           |        1.170        |    +15.2%       |
+|       50       |      1.240      |          1.310           |        1.030        |    +21.4%       |
+|       60       |      1.170      |          1.260           |        0.937        |    +25.6%       |
+|       70       |      1.050      |          1.190           |        0.806        |    +32.3%       |
+|       80       |      0.920      |          1.120           |        0.680        |    +39.3%       |
+|       90       |      0.785      |          1.020           |        0.557        |    +45.4%       |
+
 **Comparison with static estimates**  
 Across the sweep, static estimation tends to overestimate the actual power by around 2.1x to 3.4x depending on the design. This happens because it assumes a constant switching activity and does not reflect real signal behavior. The gap is most noticeable in the ICG design, where the clock can be gated and large parts of the circuit stop switching entirely. Since static analysis cannot capture this effect, it reports higher power than what actually occurs. This is why activity based power analysis is important for obtaining realistic results.
 
