@@ -1,4 +1,4 @@
-# Booth-Wallace Multiplier: Three-Design Power Comparison on Sky130
+# Radix-4 Booth-Wallace Multiplier: Three-Design Power Comparison on Sky130
 
 ![PDK](https://img.shields.io/badge/PDK-Sky130-blue)
 ![Tools](https://img.shields.io/badge/Flow-LibreLane%20%2B%20OpenROAD-green)
