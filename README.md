@@ -23,7 +23,13 @@ Three 16-bit signed multiplier designs (behavioral, structural, and structural w
   - [4.3 Static Power](#43-static-power)
   - [4.4 Dynamic Power](#44-dynamic-power)
   - [4.5 Clock Skew Trade-off](#45-clock-skew-trade-off)
-- [5. How to Reproduce](#5-how-to-reproduce)
+- [5. Physical Design (Structural ICG)](#5-physical-design-structural-icg)
+  - [5.1 Floorplan](#51-floorplan)
+  - [5.2 Power Delivery Network](#52-power-delivery-network)
+  - [5.3 Global Placement](#53-global-placement)
+  - [5.4 Detailed Routing](#54-detailed-routing)
+  - [5.5 Final GDSII](#55-final-gdsii)
+- [6. How to Reproduce](#6-how-to-reproduce)
 
 ## 1. Overview
 
@@ -272,16 +278,16 @@ Power measured with OpenROAD using gate level VCD activity. See [Section 3.3](#3
 
 | Zero Input (%) | Behavioral (mW) | Structural Baseline (mW) | Structural ICG (mW) | ICG vs Baseline |
 | :------------: | :-------------: | :----------------------: | :-----------------: | :-------------: |
-|       0        |      1.570      |          1.520           |        1.660        |     -9.2%       |
-|       10       |      1.540      |          1.500           |        1.570        |     -4.7%       |
-|       20       |      1.490      |          1.460           |        1.410        |     +3.4%       |
-|       30       |      1.430      |          1.420           |        1.300        |     +8.5%       |
-|       40       |      1.350      |          1.380           |        1.170        |    +15.2%       |
-|       50       |      1.240      |          1.310           |        1.030        |    +21.4%       |
-|       60       |      1.170      |          1.260           |        0.937        |    +25.6%       |
-|       70       |      1.050      |          1.190           |        0.806        |    +32.3%       |
-|       80       |      0.920      |          1.120           |        0.680        |    +39.3%       |
-|       90       |      0.785      |          1.020           |        0.557        |    +45.4%       |
+|       0        |      1.570      |          1.520           |        1.660        |      -9.2%      |
+|       10       |      1.540      |          1.500           |        1.570        |      -4.7%      |
+|       20       |      1.490      |          1.460           |        1.410        |      +3.4%      |
+|       30       |      1.430      |          1.420           |        1.300        |      +8.5%      |
+|       40       |      1.350      |          1.380           |        1.170        |     +15.2%      |
+|       50       |      1.240      |          1.310           |        1.030        |     +21.4%      |
+|       60       |      1.170      |          1.260           |        0.937        |     +25.6%      |
+|       70       |      1.050      |          1.190           |        0.806        |     +32.3%      |
+|       80       |      0.920      |          1.120           |        0.680        |     +39.3%      |
+|       90       |      0.785      |          1.020           |        0.557        |     +45.4%      |
 
 **Comparison with static estimates**  
 Across the sweep, static estimation tends to overestimate the actual power by around 2.1x to 3.4x depending on the design. This happens because it assumes a constant switching activity and does not reflect real signal behavior. The gap is most noticeable in the ICG design, where the clock can be gated and large parts of the circuit stop switching entirely. Since static analysis cannot capture this effect, it reports higher power than what actually occurs. This is why activity based power analysis is important for obtaining realistic results.
@@ -312,7 +318,71 @@ ICG skew is ~5x higher, but at 0.648 ns out of a 16 ns clock period that's only 
 
 The negative hold skew on the other two designs is intentional. It means the capturing FF gets its clock slightly before the launching FF, giving more hold margin. CTS tools sometimes introduce this on purpose.
 
-## 5. How to Reproduce
+## 5. Physical Design (Structural ICG)
+
+Figures from the LibreLane/OpenROAD flow on Sky130 HD. Metrics for all three variants are in [Section 4.2](#42-physical-design-summary).
+
+### 5.1 Floorplan
+
+<p align="center">
+  <img src="docs/pd/floorplan.png" width="620">
+</p>
+
+Figure 5.1: Floorplan with die boundary, core region, placement rows and routing tracks.
+
+- Die area: 174.18 × 184.90 µm
+- Standard-cell rows: 59
+- Signal I/O pins: 66
+
+### 5.2 Power Delivery Network
+
+<p align="center">
+  <img src="docs/pd/pdn.png" width="620">
+</p>
+
+Figure 5.2: PDN with met1 rails, met4 vertical straps and met5 horizontal straps.
+
+- Rail and strap width: 2 µm
+- Pitch: 30 µm
+- Offset: 5 µm
+
+### 5.3 Global Placement
+
+<p align="center">
+  <img src="docs/pd/placement.png" width="620">
+</p>
+
+Figure 5.3: Global placement with cell li1/met1 geometry over the PDN.
+
+- Instances: 1,905
+
+### 5.4 Detailed Routing
+
+<p align="center">
+  <img src="docs/pd/detailed_route.png" width="620">
+</p>
+
+Figure 5.4: Detailed routing on met1 to met5, PDN hidden.
+
+- Components: 1,994
+- DRC errors: 0
+- LVS errors: 0
+- Total wirelength: 34,173 µm
+- Worst IR drop: 0.15 mV
+
+### 5.5 Final GDSII
+
+<p align="center">
+  <img src="docs/pd/gdsii.png" width="620">
+</p>
+
+Figure 5.5: Final GDSII view with routing, PDN and I/O pins.
+
+- Components: 3,791
+- Timing closed at: 16 ns (62.5 MHz)
+- Signoff clean: DRC and LVS
+
+## 6. How to Reproduce
 
 ### Prerequisites
 
